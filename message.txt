@@ -1,0 +1,285 @@
+package Netpbm
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+)
+
+// PGM represents a Portable GrayMap image.
+type PGM struct {
+	data          [][]uint8
+	width, height int
+	magicNumber   string
+	max           int
+}
+
+// ReadPGM reads a PGM image from a file and returns a struct that represents the image.
+func ReadPGM(filename string) (*PGM, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+
+	// Function to check if a line should be skipped
+	skipLine := func(line string) bool {
+		return strings.HasPrefix(line, "#")
+	}
+
+	// Skip lines starting with #
+	for scanner.Scan() {
+		if !skipLine(scanner.Text()) {
+			break
+		}
+	}
+
+	magicNumber := scanner.Text()
+
+	// Read dimensions
+	for scanner.Scan() {
+		if !skipLine(scanner.Text()) {
+			break
+		}
+	}
+	sizeLine := scanner.Text()
+
+	size := strings.Fields(sizeLine)
+	width, err := strconv.Atoi(size[0])
+	if err != nil {
+		return nil, err
+	}
+	height, err := strconv.Atoi(size[1])
+	if err != nil {
+		return nil, err
+	}
+
+	// Read max value
+	for scanner.Scan() {
+		if !skipLine(scanner.Text()) {
+			break
+		}
+	}
+	max, err := strconv.Atoi(scanner.Text())
+	if err != nil {
+		return nil, err
+	}
+
+	pgm := &PGM{
+		width:       width,
+		height:      height,
+		magicNumber: magicNumber,
+		max:         max,
+	}
+
+	pgm.data = make([][]uint8, height)
+	for i := range pgm.data {
+		pgm.data[i] = make([]uint8, width)
+	}
+
+	// Check the magicNumber and read image data accordingly
+	if magicNumber == "P2" {
+		// Read image data for P2 (ASCII)
+		for i := 0; i < height; i++ {
+			for scanner.Scan() {
+				if !skipLine(scanner.Text()) {
+					break
+				}
+			}
+			line := scanner.Text()
+
+			tokens := strings.Fields(line)
+
+			for j := 0; j < len(tokens); j++ {
+				value, err := strconv.Atoi(tokens[j])
+				if err != nil {
+					return nil, err
+				}
+				pgm.data[i][j] = uint8(value)
+			}
+		}
+	} else if magicNumber == "P5" {
+		// Read image data for P5 (binary)
+		imageData := make([]byte, width*height)
+		_, err := file.Read(imageData)
+		if err != nil {
+			return nil, err
+		}
+
+		// Populate the pgm.data with the binary image data
+		index := 0
+		for i := 0; i < height; i++ {
+			for j := 0; j < width; j++ {
+				pgm.data[i][j] = imageData[index]
+				index++
+			}
+		}
+	} else {
+		return nil, fmt.Errorf("unsupported magic number: %s", magicNumber)
+	}
+
+	return pgm, nil
+}
+
+// Size returns the width and height of the image.
+func (pgm *PGM) Size() (int, int) {
+	return pgm.width, pgm.height
+}
+
+// At returns the value of the pixel at (x, y).
+func (pgm *PGM) At(x, y int) uint8 {
+	return pgm.data[y][x]
+}
+
+// Set sets the value of the pixel at (x, y).
+func (pgm *PGM) Set(x, y int, value uint8) {
+	if x >= 0 && x < pgm.width && y >= 0 && y < pgm.height {
+		pgm.data[y][x] = value
+	}
+}
+
+// Save writes the PGM image to a file.
+func (pgm *PGM) Save(filename string) error {
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	writer := bufio.NewWriter(file)
+
+	// Write magic number
+	_, err = writer.WriteString(pgm.magicNumber + "\n")
+	if err != nil {
+		return err
+	}
+
+	// Write dimensions
+	_, err = writer.WriteString(strconv.Itoa(pgm.width) + " " + strconv.Itoa(pgm.height) + "\n")
+	if err != nil {
+		return err
+	}
+
+	// Write max value
+	_, err = writer.WriteString(strconv.Itoa(pgm.max) + "\n")
+	if err != nil {
+		return err
+	}
+
+	// Check the magicNumber and write image data accordingly
+	if pgm.magicNumber == "P2" {
+		// Write image data for P2 (ASCII)
+		for y := 0; y < pgm.height; y++ {
+			for x := 0; x < pgm.width; x++ {
+				_, err = writer.WriteString(strconv.Itoa(int(pgm.data[y][x])) + " ")
+				if err != nil {
+					return err
+				}
+			}
+			_, err = writer.WriteString("\n")
+			if err != nil {
+				return err
+			}
+		}
+	} else if pgm.magicNumber == "P5" {
+		// Write image data for P5 (hexadecimal)
+		for y := 0; y < pgm.height; y++ {
+			for x := 0; x < pgm.width; x++ {
+				hexValue := fmt.Sprintf("0x%02X", pgm.data[y][x])
+				_, err = writer.WriteString(hexValue + " ")
+				if err != nil {
+					return err
+				}
+			}
+			_, err = writer.WriteString("\n")
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		return fmt.Errorf("unsupported magic number: %s", pgm.magicNumber)
+	}
+
+	return writer.Flush()
+}
+
+// Invert inverts the colors of the PGM image.
+func (pgm *PGM) Invert() {
+	for y := 0; y < pgm.height; y++ {
+		for x := 0; x < pgm.width; x++ {
+			pgm.data[y][x] = uint8(pgm.max) - pgm.data[y][x]
+		}
+	}
+}
+
+// Flip flips the PGM image horizontally.
+func (pgm *PGM) Flip() {
+	for y := 0; y < pgm.height; y++ {
+		for x := 0; x < pgm.width/2; x++ {
+			pgm.data[y][x], pgm.data[y][pgm.width-x-1] = pgm.data[y][pgm.width-x-1], pgm.data[y][x]
+		}
+	}
+}
+
+// Flop flops the PGM image vertically.
+func (pgm *PGM) Flop() {
+	for y := 0; y < pgm.height/2; y++ {
+		for x := 0; x < pgm.width; x++ {
+			pgm.data[y][x], pgm.data[pgm.height-y-1][x] = pgm.data[pgm.height-y-1][x], pgm.data[y][x]
+		}
+	}
+}
+
+// SetMagicNumber sets the magic number of the PGM image.
+func (pgm *PGM) SetMagicNumber(magicNumber string) {
+	pgm.magicNumber = magicNumber
+}
+
+// SetMaxValue sets the max value of the PGM image.
+func (pgm *PGM) SetMaxValue(maxValue uint8) {
+	pgm.max = int(maxValue)
+}
+
+// Rotate90CW rotates the PGM image 90° clockwise.
+func (pgm *PGM) Rotate90CW() {
+	rotated := make([][]uint8, pgm.width)
+	for i := range rotated {
+		rotated[i] = make([]uint8, pgm.height)
+	}
+
+	for y := 0; y < pgm.height; y++ {
+		for x := 0; x < pgm.width; x++ {
+			rotated[x][pgm.height-y-1] = pgm.data[y][x]
+		}
+	}
+
+	pgm.width, pgm.height = pgm.height, pgm.width
+	pgm.data = rotated
+}
+
+// ToPBM converts the PGM image to PBM.
+func (pgm *PGM) ToPBM() *PBM {
+	pbm := &PBM{
+		width:       pgm.width,
+		height:      pgm.height,
+		magicNumber: "P1",
+	}
+
+	pbm.data = make([][]bool, pgm.height)
+	for i := range pbm.data {
+		pbm.data[i] = make([]bool, pgm.width)
+	}
+
+	threshold := uint8(pgm.max / 2)
+	for y := 0; y < pgm.height; y++ {
+		for x := 0; x < pgm.width; x++ {
+			pbm.data[y][x] = pgm.data[y][x] > threshold
+		}
+	}
+
+	return pbm
+}

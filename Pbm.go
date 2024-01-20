@@ -82,13 +82,11 @@ func ReadPBM(filename string) (*PBM, error) {
 			}
 		}
 	case "P4":
-		// Decode P4 (Binary)
 		for y := 0; y < pbm.height; y++ {
 			for x := 0; x < pbm.width; x += 8 {
 				byteVal, err := reader.ReadByte()
 				if err != nil {
 					if err == io.EOF && y == pbm.height-1 && x >= pbm.width-8 {
-						// EOF is acceptable if we are at the end of the last row (possibly padded)
 						break
 					}
 					return nil, err
