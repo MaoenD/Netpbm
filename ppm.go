@@ -398,21 +398,14 @@ func (ppm *PPM) DrawCircle(center Point, radius int, color Pixel) {
 
 // DrawFilledCircle draws a filled circle.
 func (ppm *PPM) DrawFilledCircle(center Point, radius int, color Pixel) {
-	ppm.DrawCircle(center, radius, color)
+	for y := 0; y < ppm.height; y++ {
+		for x := 0; x < ppm.width; x++ {
+			dx := float64(x) - float64(center.X)
+			dy := float64(y) - float64(center.Y)
+			distanceSquared := dx*dx + dy*dy
 
-	for i := 0; i < ppm.height; i++ {
-		var positions []int
-		var number_points int
-		for j := 0; j < ppm.width; j++ {
-			if ppm.data[i][j] == color {
-				number_points += 1
-				positions = append(positions, j)
-			}
-		}
-		if number_points > 1 {
-			for k := positions[0] + 1; k < positions[len(positions)-1]; k++ {
-				ppm.data[i][k] = color
-
+			if distanceSquared < float64(radius*radius) {
+				ppm.Set(x, y, color)
 			}
 		}
 	}
