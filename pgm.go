@@ -212,41 +212,40 @@ func (pgm *PGM) Invert() {
 
 // Flip flips the PGM image horizontally.
 func (pgm *PGM) Flip() {
-	for i := 0; i < pgm.height; i++ {
+	for i := 0; i < pgm.height; i++ { // Loop over the first half of the columns in the row, only going up to half the width ensures that each pixel is swapped only once.
 		for j := 0; j < pgm.width/2; j++ {
 			pgm.data[i][j], pgm.data[i][pgm.width-j-1] = pgm.data[i][pgm.width-j-1], pgm.data[i][j]
-		}
+		} // Swap the pixel at position j with its counterpart on the other side of the row. pgm.data[i][j] is the pixel on the left side of the row, and pgm.data[i][pgm.width-j-1] is the corresponding pixel on the right side. The '-1' is necessary because arrays begins at 0 in go
 	}
 }
 
 // Flop flops the PGM image vertically.
 func (pgm *PGM) Flop() {
 	for i := 0; i < pgm.height/2; i++ {
-		pgm.data[i], pgm.data[pgm.height-i-1] = pgm.data[pgm.height-i-1], pgm.data[i]
+		pgm.data[i], pgm.data[pgm.height-i-1] = pgm.data[pgm.height-i-1], pgm.data[i] // Exchange the current row (pgm.data[i]) with its vertically mirrored counterpart. The counterpart row is identified by 'pgm.height-i-1', which effectively calculates the mirrored row index from the bottom of the image.
 	}
 }
 
 // SetMagicNumber sets the magic number of the PGM image.
 func (pgm *PGM) SetMagicNumber(magicNumber string) {
-	pgm.magicNumber = magicNumber
+	pgm.magicNumber = magicNumber // Set the magic number of the PGM image. The magic number is stored in the variable "magicNumber". The function takes a string as an argument and sets the variable to the value of the argument.
 }
 
 // SetMaxValue sets the max value of the PGM image.
 func (pgm *PGM) SetMaxValue(maxValue uint8) {
 	if maxValue <= 0 {
 		panic("Invalid maximum value")
-	}
+	} // Check if the maximum value is valid if equal or less than 0 it will panic
 
-	// Scale the pixel values to fit the new maximum value
-	scaleFactor := float64(maxValue) / float64(pgm.max)
+	scaleFactor := float64(maxValue) / float64(pgm.max) // Calculate the scale factor to adjust pixel values. This is done by dividing the new maximum value by the current maximum value. The scaling ensures that the image's relative luminance levels are maintained even after changing the maximum grayscale value.
 	for i := 0; i < pgm.height; i++ {
 		for j := 0; j < pgm.width; j++ {
 			pixelValue := uint8(float64(pgm.data[i][j]) * scaleFactor)
 			pgm.data[i][j] = pixelValue
-		}
+		} // Scale the pixel's grayscale value and convert it back to uint8; the scaling adjusts each pixel's brightness to the new range.
 	}
 
-	pgm.max = maxValue
+	pgm.max = maxValue // Update the maximum grayscale value of the image to the new value.
 }
 
 // Rotate90CW rotates the PGM image 90° clockwise.
@@ -255,17 +254,17 @@ func (pgm *PGM) Rotate90CW() {
 	newData := make([][]uint8, pgm.width)
 	for i := 0; i < pgm.width; i++ {
 		newData[i] = make([]uint8, pgm.height)
-	}
+	} // Iterate through the original image data and populate the new rotated image
 
 	for i := 0; i < pgm.height; i++ {
 		for j := 0; j < pgm.width; j++ {
 			newData[j][pgm.height-i-1] = pgm.data[i][j]
 		}
-	}
+	} // Rotate the pixel values by 90 degrees clockwise, the pixel at (i, j) in the original image becomes the pixel at (j, height-i-1) in the rotated image
 
 	pgm.data = newData
 	pgm.width, pgm.height = pgm.height, pgm.width
-}
+} // Update the PGM struct to use the new rotated data and update the width and height accordingly
 
 // ToPBM converts the PGM image to PBM.
 func (pgm *PGM) ToPBM() *PBM {
@@ -279,7 +278,7 @@ func (pgm *PGM) ToPBM() *PBM {
 		pbm.data[y] = make([]bool, pgm.width)
 		for x := 0; x < pgm.width; x++ {
 			pbm.data[y][x] = pgm.data[y][x] < uint8(pgm.max/2)
-		}
+		} // Convert grayscale pixel values to binary in PBM format ,pixels with values less than half of the maximum value become 'true' (1), otherwise 'false' (0)
 	}
 	return pbm
 }
