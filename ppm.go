@@ -499,3 +499,40 @@ func max(a, b int) int {
 	}
 	return b
 }
+
+/*func (ppm *PPM) DrawKochSnowflake(n int, start Point, width int, color Pixel) {
+	// Calculate the vertices of the initial equilateral triangle
+	height := width * int(math.Sqrt(3)) / 2
+	p1 := start
+	p2 := Point{start.X + width, start.Y}
+	p3 := Point{start.X + width/2, start.Y - height}
+
+	// Recursively draw the three sides of the triangle
+	ppm.drawKochLine(n, p1, p2, color)
+	ppm.drawKochLine(n, p2, p3, color)
+	ppm.drawKochLine(n, p3, p1, color)
+}
+
+func (ppm *PPM) drawKochLine(n int, p1, p2 Point, color Pixel) {
+	if n == 0 {
+		ppm.DrawLine(p1, p2, color)
+	} else {
+		// Calculate the points for subdividing the line segment
+		dx, dy := p2.X-p1.X, p2.Y-p1.Y
+		a := Point{p1.X + dx/3, p1.Y + dy/3}
+		b := Point{p1.X + 2*dx/3, p1.Y + 2*dy/3}
+
+		// Calculate the top point of the equilateral triangle
+		theta := math.Pi / 3
+		sinTheta, cosTheta := math.Sin(theta), math.Cos(theta)
+		px := float64(b.X-a.X)*cosTheta - float64(b.Y-a.Y)*sinTheta + float64(a.X)
+		py := float64(b.X-a.X)*sinTheta + float64(b.Y-a.Y)*cosTheta + float64(a.Y)
+		c := Point{int(px), int(py)}
+
+		// Recursively draw the four line segments
+		ppm.drawKochLine(n-1, p1, a, color)
+		ppm.drawKochLine(n-1, a, c, color)
+		ppm.drawKochLine(n-1, c, b, color)
+		ppm.drawKochLine(n-1, b, p2, color)
+	}
+} */

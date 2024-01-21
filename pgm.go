@@ -21,7 +21,7 @@ func ReadPGM(filename string) (*PGM, error) {
 		return nil, err
 	}
 	defer file.Close()
-
+	//open the file, return error if failed to open and secure close after the end of the function
 	reader := bufio.NewReader(file)
 
 	// Read magic number
@@ -29,51 +29,50 @@ func ReadPGM(filename string) (*PGM, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error reading magic number: %v", err)
 	}
-	magicNumber = strings.TrimSpace(magicNumber)
+	magicNumber = strings.TrimSpace(magicNumber) // trim the magic number from the whitespaces
 	if magicNumber != "P2" && magicNumber != "P5" {
 		return nil, fmt.Errorf("invalid magic number: %s", magicNumber)
 	}
-
+	// A lot of flag checking during the code since it was quite hard to find the error at the beginning if the test phase
 	// Read dimensions
-	dimensions, err := reader.ReadString('\n')
+	dimensions, err := reader.ReadString('\n') //
 	if err != nil {
 		return nil, fmt.Errorf("error reading dimensions: %v", err)
 	}
-	var width, height int
-	_, err = fmt.Sscanf(strings.TrimSpace(dimensions), "%d %d", &width, &height)
-	if err != nil {
+	var width, height int                                                        // declare variables width and height
+	_, err = fmt.Sscanf(strings.TrimSpace(dimensions), "%d %d", &width, &height) // trim the dimensions from the whitespaces
+	if err != nil {                                                              // check if there is an error
 		return nil, fmt.Errorf("invalid dimensions: %v", err)
 	}
 	if width <= 0 || height <= 0 {
 		return nil, fmt.Errorf("invalid dimensions: width and height must be positive")
-	}
+	} // Check if the dimensions are positive in case you wanted to test a negative number
 
 	// Read max value
-	maxValue, err := reader.ReadString('\n')
+	maxValue, err := reader.ReadString('\n') //
 	if err != nil {
 		return nil, fmt.Errorf("error reading max value: %v", err)
 	}
 	maxValue = strings.TrimSpace(maxValue)
-	var max int
-	_, err = fmt.Sscanf(maxValue, "%d", &max)
+	var max2 int
+	_, err = fmt.Sscanf(maxValue, "%d", &max2)
 	if err != nil {
 		return nil, fmt.Errorf("invalid max value: %v", err)
-	}
+	} // Check if the max value is valid
 
-	// Read image data
 	data := make([][]uint8, height)
-	expectedBytesPerPixel := 1
+	expectedBytesPerPixel := 1 // Allocate a 2D slice for image data. Each element in the slice represents a row of pixels and define the expected number of bytes per pixel since for grayscale images, typically, it's 1 byte per pixel.
 
 	if magicNumber == "P2" {
-		// Read P2 format (ASCII)
+		// Read P2 format in ASCII format
 		for y := 0; y < height; y++ {
 			line, err := reader.ReadString('\n')
 			if err != nil {
 				return nil, fmt.Errorf("error reading data at row %d: %v", y, err)
 			}
-			fields := strings.Fields(line)
-			rowData := make([]uint8, width)
-			for x, field := range fields {
+			fields := strings.Fields(line)  // Split the line into individual fields, each field represents one pixel's value.
+			rowData := make([]uint8, width) // Allocate a slice to hold pixel values for the current row.
+			for x, field := range fields {  // Iterate through each pixel in the line
 				if x >= width {
 					return nil, fmt.Errorf("index out of range at row %d", y)
 				}
@@ -82,14 +81,14 @@ func ReadPGM(filename string) (*PGM, error) {
 				if err != nil {
 					return nil, fmt.Errorf("error parsing pixel value at row %d, column %d: %v", y, x, err)
 				}
-				rowData[x] = pixelValue
+				rowData[x] = pixelValue // Store the pixel value in the row slice
 			}
-			data[y] = rowData
+			data[y] = rowData // Assign the row data to the corresponding row in the image data.
 		}
 	} else if magicNumber == "P5" {
-		// Read P5 format (binary)
+		// Read P5 format in binary format
 		for y := 0; y < height; y++ {
-			row := make([]byte, width*expectedBytesPerPixel)
+			row := make([]byte, width*expectedBytesPerPixel) // Allocate a slice to hold pixel values for the current row.
 			n, err := reader.Read(row)
 			if err != nil {
 				if err == io.EOF {
@@ -99,35 +98,35 @@ func ReadPGM(filename string) (*PGM, error) {
 			}
 			if n < width*expectedBytesPerPixel {
 				return nil, fmt.Errorf("unexpected end of file at row %d, expected %d bytes, got %d", y, width*expectedBytesPerPixel, n)
-			}
+			} // flag for the same reason as before
 
-			rowData := make([]uint8, width)
+			rowData := make([]uint8, width) // Allocate a slice to store the pixel values for the current row.
 			for x := 0; x < width; x++ {
 				pixelValue := uint8(row[x*expectedBytesPerPixel])
 				rowData[x] = pixelValue
-			}
-			data[y] = rowData
+			} // Convert the raw byte data to pixel values and store them in rowData. accesses the byte data for the pixel then  Store the converted pixel value in the 'rowData' slice at position x.
+			data[y] = rowData // Assign the rowData slice to the corresponding row in the 'data' slice.
 		}
 	}
 
 	// Return the PGM struct
-	return &PGM{data, width, height, magicNumber, uint8(max)}, nil
+	return &PGM{data, width, height, magicNumber, uint8(max2)}, nil
 }
 
 // Size returns the width and height of the image.
 func (pgm *PGM) Size() (int, int) {
 	return pgm.width, pgm.height
-}
+} // return the width and height of the image
 
 // At returns the value of the pixel at (x, y).
 func (pgm *PGM) At(x, y int) uint8 {
 	return pgm.data[y][x]
-}
+} // return the value of the pixel at (x, y)
 
 // Set sets the value of the pixel at (x, y).
 func (pgm *PGM) Set(x, y int, value uint8) {
 	pgm.data[y][x] = value
-}
+} // set the value of the pixel at (x, y)
 
 // Save saves the PGM image to a file and returns an error if there was a problem.
 func (pgm *PGM) Save(filename string) error {
@@ -135,25 +134,23 @@ func (pgm *PGM) Save(filename string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer file.Close() // Create or overwrite a file with the specified filename, return an error if file creation fails then secure that the file is closed when the function exits
 
 	writer := bufio.NewWriter(file)
 	_, err = fmt.Fprintln(writer, pgm.magicNumber)
 	if err != nil {
 		return fmt.Errorf("error writing magic number: %v", err)
-	}
+	} // Write the magic number to the file and handle any errors.
 
-	// Write dimensions
 	_, err = fmt.Fprintf(writer, "%d %d\n", pgm.width, pgm.height)
 	if err != nil {
 		return fmt.Errorf("error writing dimensions: %v", err)
-	}
+	} // Write image dimensions (width and height) to the file.
 
-	// Write max value
 	_, err = fmt.Fprintln(writer, pgm.max)
 	if err != nil {
 		return fmt.Errorf("error writing max value: %v", err)
-	}
+	} // Write the maximum gray value (max) to the file.
 
 	if pgm.magicNumber == "P2" {
 		err = savePGM(writer, pgm, false) // Pass false for isBinary
@@ -163,9 +160,9 @@ func (pgm *PGM) Save(filename string) error {
 
 	if err != nil {
 		return err
-	}
+	} // Check for errors during the saving of image data and return any errors encountered.
 
-	return writer.Flush()
+	return writer.Flush() // Flush the buffered writer to ensure all data is written to the file.
 }
 
 func savePGM(file *bufio.Writer, pgm *PGM, isBinary bool) error {
@@ -208,7 +205,7 @@ func savePGM(file *bufio.Writer, pgm *PGM, isBinary bool) error {
 func (pgm *PGM) Invert() {
 	for i := 0; i < pgm.height; i++ {
 		for j := 0; j < pgm.width; j++ {
-			pgm.data[i][j] = pgm.max - pgm.data[i][j]
+			pgm.data[i][j] = pgm.max - pgm.data[i][j] // Invert the pixel value,this is done by subtracting the pixel value from the maximum possible value. if near max it goes light  so inverting it turns it very black
 		}
 	}
 }
